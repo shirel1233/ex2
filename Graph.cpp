@@ -5,24 +5,33 @@
 using namespace std;
 
 
-void ariel::Graph::loadGraph(const vector<vector<int>> matrix) {
-    //if (matrix.size() != matrix[0].size()) {
-    //    throw std::invalid_argument("Error: matrix is not square.");
-    //}
-
-    // Clear previous data
-    mat.clear();
-
-    // Copy the input matrix
-    mat = matrix;     
+// Constructor that initializes the matrix with zeros
+ariel::Graph::Graph(size_t numVertices) : mat(numVertices, vector<int>(numVertices, 0)) {
+    // mat is initialized to an numVertices x numVertices matrix with all zeros
 }
 
+// Destructor
+ariel::Graph::~Graph() {
+    // No need to explicitly delete anything, since we're using std::vector
+}
 
-int ariel::Graph::getNumVertices() const {
-    // Use IndexType for n
-    IndexType n = mat.size();
+void ariel::Graph::loadGraph(const vector<vector<int>> matrix) {
+    if (matrix.size() != matrix[0].size()) {
+        throw std::invalid_argument("Error: matrix is not square.");
+    }
+    // Copy the input matrix
+    mat = matrix;
+    // Ensure the diagonal elements are zero
+    for (size_t i = 0; i < mat.size(); ++i) {
+        mat[i][i] = 0;
+    }     
+}
+
+size_t ariel::Graph::getNumVertices() const {
+    size_t n = mat.size();
     return n;
 };
+
 
 // Helper function to check if the graph is directed
 bool ariel::Graph::isDirected() const {
@@ -35,7 +44,7 @@ bool ariel::Graph::isDirected() const {
         }
     }
     return false; // undirected
-}
+};
 
 int ariel::Graph:: getNumEdges() const {
     int numEdges = 0;
@@ -55,7 +64,19 @@ int ariel::Graph:: getNumEdges() const {
     return numEdges;
 }
 
-int ariel::Graph::getEdge(IndexType i, IndexType j)const {
+void ariel::Graph:: setEdge(size_t i, size_t j, int val){
+    if (i >= mat.size() || j >= mat.size()) {
+        cerr << "Error: Invalid indices." << endl;
+        return; // Return some default value indicating error
+    }
+    if(i!=j){
+        mat[i][j]=val;
+    }else{
+        mat[i][j]=0;
+    }
+}
+
+int ariel::Graph::getEdge(size_t i, size_t j)const {
     // Check if indices are valid
     if (i >= mat.size() || j >= mat.size()) {
         cerr << "Error: Invalid indices." << endl;
@@ -67,10 +88,9 @@ int ariel::Graph::getEdge(IndexType i, IndexType j)const {
     return ans;
 };
 
-
 void ariel::Graph::printGraph() const {
     for (size_t i = 0; i < mat.size(); i++) {
-        for (size_t j = 0; j < mat[i].size(); ++j) {
+        for (size_t j = 0; j < mat[i].size(); j++) {
             cout << mat[i][j];
             if (j != mat[i].size() - 1) {
                 cout << " ";
@@ -81,22 +101,26 @@ void ariel::Graph::printGraph() const {
 }
 
 
-// Helper function to check if the current graph is contained in another graph
 bool ariel::Graph::isContainedIn(const Graph& other) const {
-// Check if the adjacency matrix of the current graph is a submatrix of the other graph's adjacency matrix
-    if (*this==other) { 
-        return false;
+    // Check if *this is larger than other
+    if (mat.size() > other.mat.size() || mat[0].size() > other.mat[0].size()) {
+        return false; // *this cannot be contained in other if it's larger in size
+    }
+
+    if (*this == other) { 
+        return false;  // Graphs are identical, so *this is not contained in other
     } 
+
+    // Check if the adjacency matrix of *this is a submatrix of other's adjacency matrix
     for (size_t i = 0; i < mat.size(); i++) {
         for (size_t j = 0; j < mat[i].size(); j++) {
             if (mat[i][j] != 0 && other.mat[i][j] == 0) {
-                return false;
+                return false;  // *this has an edge that other does not have
             }
         }
     }
-    return true;
+    return true;  // *this is contained within other
 }
-
 
 void ariel::Graph:: operator+=(const Graph& other) {
     if (mat.size() != other.mat.size()) {
@@ -130,27 +154,28 @@ void ariel::Graph::operator-=(const Graph& other) {
     }
 }
 
-vector<vector<int>> ariel::Graph::operator+(const Graph& other) const {
-    vector<vector<int>> result(mat.size(), vector<int>(mat[0].size()));
+ariel:: Graph ariel::Graph::operator+(const Graph& other) const {
+    Graph result(mat.size());
     if (mat.size() != other.mat.size() || mat[0].size() != other.mat[0].size()) {
         throw std::invalid_argument("Error: Matrices must have same dimensions for addition.");
     }
     for (size_t i = 0; i < mat.size(); i++) {
         for (size_t j = 0; j < mat[i].size(); j++) {
-            result[i][j] = mat[i][j] + other.mat[i][j];
+            result.setEdge(i,j, mat[i][j] + other.mat[i][j]);
         }
     }
+
     return result;
 }
 
-vector<vector<int>> ariel::Graph::operator-(const Graph& other) const {
-    vector<vector<int>> result( mat.size());
+ariel:: Graph ariel::Graph::operator-(const Graph& other) const {
+    Graph result(mat.size());
     if (mat.size() != other.mat.size() || mat[0].size() != other.mat[0].size()) {
         throw std::invalid_argument("Error: Matrices must have same dimensions for subtraction.");
     }
     for (size_t i = 0; i < mat.size(); i++) {
         for (size_t j = 0; j < mat[i].size(); j++) {
-            result[i][j] = mat[i][j] - other.mat[i][j];
+            result.setEdge(i,j, mat[i][j] - other.mat[i][j]);
         }
     }
     return result;
@@ -227,48 +252,52 @@ void ariel::Graph:: operator*(int scalar) {
     }
 }
 
-vector<vector<int>> ariel::Graph:: operator*(const Graph& other) const{
-     if (mat.size() != mat[0].size() || other.mat.size() != other.mat[0].size()) {
-        throw std::invalid_argument("Error: Both matrices must be square for multiplication.");
-    }
-
-    if (mat.size() != other.mat.size()) {
+ariel::Graph ariel::Graph::operator*(const Graph& other) const {
+    if (mat.size() != other.mat.size() || mat[0].size() != other.mat[0].size()) {
         throw std::invalid_argument("Error: Matrices must have the same dimensions for multiplication.");
     }
-    vector<vector<int>> result(mat.size(), vector<int>(mat[0].size()));
 
-    for (size_t i = 0; i < mat.size(); i++) {
-        for (size_t j = 0; j < mat[i].size(); j++) {
-            for (size_t k = 0; k < mat.size(); k++) {
-                result[i][j] += mat[i][k] * other.mat[k][j];
+    size_t n = mat.size();
+    Graph result(n);
+
+    for (size_t i = 0; i < n; ++i) {
+        for (size_t j = 0; j < n; ++j) {
+            int sum = 0;
+            for (size_t k = 0; k < n; ++k) {
+                sum += mat[i][k] * other.mat[k][j];
             }
+            result.setEdge(i, j, sum);
         }
     }
+
     return result;
 }
 
 
-bool ariel::Graph:: operator==(const Graph& other) const {
-    if (mat.size() != other.mat.size()) { 
-        //Graphs G1 and G2 will be called equal if they are of the same order of magnitude
+
+bool ariel::Graph::operator==(const Graph& other) const {
+    if (mat.size() != other.mat.size()) {
+        // Graphs G1 and G2 will be called equal if they are of the same order of magnitude
         return false;
     }
 
     for (size_t i = 0; i < mat.size(); i++) {
         for (size_t j = 0; j < mat[i].size(); j++) {
-        //contain the same edges (and the weights of the edges are the same)
+            // Check if corresponding edges are equal
             if (mat[i][j] != other.mat[i][j]) {
                 return false;
             }
         }
     }
-    if (*this>other||*this <other) { 
-        
+
+    // Additional condition: Compare using > and < operators
+    if (*this > other || *this < other) {
         return false;
-    } 
+    }
 
     return true;
 }
+
 bool ariel::Graph::operator!=(const Graph& other) const {
     return !(*this == other);
 }
@@ -306,13 +335,41 @@ bool ariel::Graph::operator>(const Graph& other) const {
 
 bool ariel::Graph::operator>=(const Graph& other) const {
     // Implement >= using > and ==
-    return !(*this < other);
+    return (*this > other) || (*this == other);;
 }
 
 bool ariel::Graph::operator<=(const Graph& other) const {
     // Implement <= using < and ==
-    return !(*this > other) || (*this == other);
+    return (*this < other) || (*this == other);
 }
 
+
+
+ostream &ariel::operator<<(ostream &os, const Graph &g)
+{
+    size_t n = g.mat.size();
+    size_t m = g.mat[0].size();
+
+    for (size_t i = 0; i < n; i++)
+    {
+        os << "{";
+        for (size_t j = 0; j < m; j++)
+        {
+            os << g.mat[i][j];
+            if (j != m - 1)
+            {
+                os << ", ";
+            }
+        }
+        os << "}";
+        if (i != n - 1)
+        {
+            os << ", ";
+        }
+        os << "\n";
+    }
+    os << "\n";
+    return os;
+}
 
 

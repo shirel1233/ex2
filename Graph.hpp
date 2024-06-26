@@ -9,20 +9,27 @@ class Graph{
     
     vector<vector<int>> mat;
     public:
-    using IndexType= typename std:: vector<int>::size_type;
+
+    // Constructor
+    Graph(size_t numVertices);
+     Graph(){}
+    // Destructor
+    ~Graph();
 
     void loadGraph (const vector<vector<int>> matrix);
     void printGraph() const;
-    int getNumVertices() const; 
-    int getEdge(IndexType i, IndexType j) const;
+    size_t getNumVertices() const; 
+    int getEdge(size_t i, size_t j) const;
     int getNumEdges() const;
     bool isDirected() const;
+    void setEdge(size_t i, size_t j, int val);
     bool isContainedIn(const Graph& other) const;
+
 
     void operator+=(const Graph& other);
     void operator-=(const Graph& other);
-    vector<vector<int>> operator+(const Graph& other) const;
-    vector<vector<int>> operator-(const Graph& other) const;
+    Graph operator+(const Graph& other) const;
+    Graph operator-(const Graph& other) const;
     void operator+() const; // Unary +
     void operator-(); // Unary -
 
@@ -33,13 +40,20 @@ class Graph{
     bool operator==(const Graph& other) const;
     bool operator!=(const Graph& other) const;
 
-    void operator++();
-    void operator++(int);
-    void operator--();
-    void operator--(int);
+    void operator++();    //++n
+    void operator++(int); //n++
+    void operator--();    //--n
+    void operator--(int); //n--
 
     void operator*(int scalar);
-    vector<vector<int>> operator*(const Graph& other) const;
+    Graph operator*(const Graph& other) const;
+
+    friend ostream& operator<<(ostream &os, const Graph& g) ; // Print Graph
+
 
 };
 }
+
+
+
+
